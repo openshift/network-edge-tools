@@ -23,9 +23,9 @@ apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 ...
 spec:
-parentRefs:
-- name: gateway
-  namespace: demo-gateway
+  parentRefs:
+  - name: gateway
+    namespace: demo-gateway
   hostnames: ["http.<DOMAIN_NAME>"] #[2]
 ```
 [1]: Specify a wildcard with your new domain name.\

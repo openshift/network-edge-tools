@@ -114,7 +114,7 @@ metadata:
   name: http
   namespace: demo-app
 spec:
-parentRefs:
+  parentRefs:
   - name: gateway
     namespace: demo-gateway
   hostnames: ["http.example.com"]
