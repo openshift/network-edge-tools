@@ -1,6 +1,6 @@
 # Gateway API with OpenShift Networking - Developer Preview Update
 
-Authors: Candace Holman and Grant Spence
+Authors: Grant Spence
 
 ![Gateway API Dev Preview Update](images/gateway-api-dev-preview-update.png)
 
