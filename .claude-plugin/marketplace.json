@@ -1,0 +1,13 @@
+{
+  "name": "network-edge-tools",
+  "owner": {
+    "name": "openshift"
+  },
+  "plugins": [
+    {
+      "name": "konflux-release",
+      "source": "./plugins/konflux-release",
+      "description": "Konflux release workflow automation for ExternalDNS Operator (EDO)"
+    }
+  ]
+}

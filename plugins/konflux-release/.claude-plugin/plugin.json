@@ -1,0 +1,8 @@
+{
+  "name": "konflux-release",
+  "description": "Konflux release workflow automation for ExternalDNS Operator (EDO)",
+  "version": "0.1.0",
+  "author": {
+    "name": "github.com/openshift/network-edge-tools"
+  }
+}
