@@ -7,7 +7,7 @@ Note: Gateway API via Ingress Operator is GA in OpenShift 4.19.  These instructi
 
   * Prior to GA 4.19, use a non-production OpenShift Cluster
   * OpenShift version 4.18 or greater, on a cloud platform that supports Kubernetes service load balancers (e.g. GCP, AWS, and Azure)
-  * If OSSM is already installed, it must be at least:
+  * If OSSM is already installed, the minimum required version is:
     * OSSM 2.6 for OpenShift 4.18
     * OSSM 3.0.1 for OpenShift 4.19
     * OSSM 3.1.0 for OpenShift 4.20
@@ -35,8 +35,6 @@ $ oc adm policy add-cluster-role-to-user cluster-admin -z ingress-operator -n op
 clusterrole.rbac.authorization.k8s.io/cluster-admin added: "ingress-operator"
 ```
 
-It is anticipated that this need for cluster-admin permissions will be eliminated in a future release of Gateway API in OpenShift.
-
 ### 2\. Enable the Feature Gate (For OCP version before 4.19)
 
   * **OpenShift 4.19 and beyond:** This step is no longer required and should be skipped.
@@ -51,7 +49,7 @@ featuregate.config.openshift.io/cluster patched
 
 Wait for the ingress operator to successfully install the Gateway API CRDs:
 
-> **Note:** OCP 4.20 and later also includes the `grpcroutes.gateway.networking.k8s.io` CRD for routing gRPC traffic.
+> **Note:** OCP 4.19 and later also includes the `grpcroutes.gateway.networking.k8s.io` CRD for routing gRPC traffic.
 
 ```console
 $ oc get crd gatewayclasses.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io gateways.gateway.networking.k8s.io referencegrants.gateway.networking.k8s.io
@@ -92,25 +90,27 @@ Next, create the GatewayClass. The controller name differs by version:
     gatewayclass.gateway.networking.k8s.io/openshift-default created
     ```
 
-Behind the scenes, the Ingress Operator creates a ServiceMeshControlPlane (SMCP) CR, which is the configuration API for OSSM. Wait a minute or two for the SMCP to be created and become ready:
+Behind the scenes, the Ingress Operator sets up OSSM. The mechanism differs by version: prior to 4.19 it creates a ServiceMeshControlPlane (SMCP) CR; in 4.19 it creates an Istio CR; in 4.20 and later OSSM is installed without OLM and no SMCP or Istio CR is created. Wait a minute or two for setup to complete:
 
-  * **Prior to OpenShift 4.20:** OSSM uses ServiceMeshControlPlane (SMCP) resources.
+  * **Prior to OpenShift 4.19:** OSSM uses ServiceMeshControlPlane (SMCP) resources.
     ```console
     $ oc get smcp -n openshift-ingress
     NAME                READY   STATUS            PROFILES      VERSION   AGE
     openshift-gateway   5/5     ComponentsReady   ["default"]   2.4.0     10m
     ```
 
-  * **OpenShift 4.20 and beyond:** OSSM 3 uses Istio resources instead of SMCP.
+  * **OpenShift 4.19:** OSSM 3 uses Istio resources instead of SMCP.
     ```console
     $ oc get istio -A
     NAME                NAMESPACE           PROFILE   REVISIONS   READY   IN USE   ACTIVE REVISION     STATUS    VERSION   AGE
     openshift-gateway   openshift-ingress             1           1       0        openshift-gateway   Healthy   v1.26.2   2m
     ```
 
+  * **OpenShift 4.20 and beyond:** OSSM is installed without OLM — no SMCP or Istio CR is created. Verify by checking the deployment instead (see below).
+
 OSSM will create Istio deployments in the `openshift-ingress` namespace. Ensure the pods for the deployments are running.
 
-  * **Prior to OpenShift 4.20:** OSSM creates a shared `istio-ingressgateway` deployment and the control plane.
+  * **Prior to OpenShift 4.19:** OSSM creates a shared `istio-ingressgateway` deployment and the control plane.
     ```console
     $ oc get deployment -n openshift-ingress
     NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
@@ -119,12 +119,19 @@ OSSM will create Istio deployments in the `openshift-ingress` namespace. Ensure 
     router-default            2/2     2            2           6h4m
     ```
 
-  * **OpenShift 4.20 and beyond:** Only the Istio control plane (`istiod`) is created at this stage. Individual gateway deployments are created when you create Gateway resources.
+  * **OpenShift 4.19 and beyond:** Only the Istio control plane (`istiod`) is created at this stage. Individual gateway deployments are created when you create Gateway resources.
     ```console
     $ oc get deployment -n openshift-ingress
     NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
     istiod-openshift-gateway   1/1     1            1           2m
     router-default             2/2     2            2           6h4m
+    ```
+
+  * **OpenShift 4.20 and beyond (NO-OLM):** Same result — only the Istio control plane is created at this stage, but without OLM-managed resources.
+    ```console
+    $ oc -n openshift-ingress get deployment
+    NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+    istiod-openshift-gateway   1/1     1            1           55s
     ```
 
 Gateway API and OSSM have been installed successfully and are ready to use. We are now ready to create Gateways and HTTPRoutes.
@@ -176,17 +183,17 @@ gateway.gateway.networking.k8s.io/demo-gateway created
 
 By default, Istio will [automatically provision](https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/#automated-deployment) a gateway deployment and service with the same name upon creation of this Gateway object:
 
-* **OpenShift 4.20 and beyond:** The deployment name changes to `demo-gateway-openshift-default`.
+* **OpenShift 4.19 and beyond:** The deployment name changes to `demo-gateway-openshift-default`.
 
 
 ```console
-$ oc get deployment -n openshift-ingress demo-gateway
-NAME          READY   UP-TO-DATE   AVAILABLE   AGE
-demo-gateway  1/1     1            1           25s
+$ oc get deployment -n openshift-ingress demo-gateway-openshift-default
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+demo-gateway-openshift-default  1/1     1            1           25s
 
-$ oc get service -n openshift-ingress demo-gateway
-NAME          TYPE          CLUSTER-IP       EXTERNAL-IP                          PORT(S)                        AGE
-demo-gateway  LoadBalancer  172.30.175.176   domain.us-east-1.elb.amazonaws.com   15021:30608/TCP,80:31833/TCP   47s
+$ oc get service -n openshift-ingress demo-gateway-openshift-default
+NAME                            TYPE          CLUSTER-IP       EXTERNAL-IP                          PORT(S)                        AGE
+demo-gateway-openshift-default  LoadBalancer  172.30.175.176   domain.us-east-1.elb.amazonaws.com   15021:30608/TCP,80:31833/TCP   47s
 ```
 
 When the Gateway from the previous step is created, the Ingress Operator will automatically create a DNSRecord CR with the hostname from the listener. With the DNSRecord CR created, the Ingress Operator will now create a DNS record using the cloud-specific API (for example, Route 53 on AWS) and update the status on the DNSRecord CR accordingly:
@@ -290,11 +297,11 @@ httproute.gateway.networking.k8s.io/http created
 
 Wait for the gateway deployment to be ready:
 
-  * **Prior to OpenShift 4.20:** The condition is `Ready`.
+  * **Prior to OpenShift 4.19:** The condition is `Ready`.
     ```console
     $ oc wait -n openshift-ingress --for=condition=ready gateways.gateway.networking.k8s.io demo-gateway
     ```
-  * **OpenShift 4.20 and beyond:** The condition is `Programmed`.
+  * **OpenShift 4.19 and beyond:** The condition is `Programmed`.
     ```console
     $ oc wait -n openshift-ingress --for=condition=programmed gateways.gateway.networking.k8s.io demo-gateway
     gateway.gateway.networking.k8s.io/demo-gateway condition met
@@ -321,8 +328,8 @@ You should see a 200 response code. The response will include headers from the a
     HTTP/1.1 200 OK
     date: Wed, 05 Nov 2025 15:58:06 GMT
     server: Apache/2.4.62 (Red Hat Enterprise Linux) OpenSSL/3.2.2
-    app: foo
     content-type: text/html; charset=UTF-8
+    app: foo
     ...
     ```
 
