@@ -1,0 +1,7 @@
+# Generated installer assets, credentials, and local authentication files.
+/ocp-install-dir/
+/.ocp_cluster_counter
+/.krb-passwd
+/.aws-saml-venv/
+*.bak
+*.log
