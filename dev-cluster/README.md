@@ -37,6 +37,11 @@ includes the internal Red Hat `aws-automation` SAML tool. The wrapper also build
 an image automatically if the selected version and Containerfile checksum do
 not already have a matching local image.
 
+Both entry points use [nids-build.sh](nids-build.sh). It resolves internal
+GitLab on the host before starting the build, passes that address to the build
+container, and selects the native container-engine architecture. Connect to
+the corporate VPN before building an image, including a new OpenShift version.
+
 ## Configuration
 
 Export these variables in the host shell before launching a script:
@@ -130,7 +135,10 @@ successful destroy.
 ## Troubleshooting
 
 - **Internal tool installation:** Check VPN connectivity to
-  `gitlab.cee.redhat.com`. Build dependencies are installed inside the image.
+  `gitlab.cee.redhat.com`. If the host cannot resolve it, the build stops before
+  downloading dependencies. The build passes the host-resolved address into
+  the container to handle corporate split DNS. If GitLab still cannot be
+  reached, check that the VPN allows traffic from the container VM.
 - **AWS authentication:** Verify the account ID and Kerberos ticket. An expired
   SAML session is refreshed by the AWS helper when you rerun the script.
 - **Clock drift:** After laptop sleep, AWS STS or TLS can fail if the container
@@ -144,6 +152,7 @@ successful destroy.
 ## Files and history
 
 - [setup.sh](setup.sh): prerequisite checks and initial image build.
+- [nids-build.sh](nids-build.sh): VPN DNS check and shared image build.
 - [nids-run.sh](nids-run.sh): container image selection, authentication mounts,
   and host integration.
 - [redhat-aws.sh](redhat-aws.sh): sourced AWS authentication helper.
@@ -152,7 +161,7 @@ successful destroy.
 
 The scripts and Containerfile were imported from
 [`bentito/selfhelp` at `9f12e1c`](https://github.com/bentito/selfhelp/tree/9f12e1cb75c29e62f3a0f431c1dd57b06d44f6a7).
-Only trailing whitespace was cleaned up in the imported runtime files.
+The build entry points now share VPN DNS checks and native platform selection.
 This README replaces `NIDS_DEV_CLUSTER_HOW_TO.md`. Earlier
 [progress notes](docs/archive/CLUSTER_ONE_SHOT_PROGRESS.md) and the
 [containerization revision plan](docs/archive/CONTAINER_REVISION_PLAN.md) are
