@@ -1,0 +1,3 @@
+# The image installs its tools without copying files from the build context.
+**
+!nids-dev.Containerfile
